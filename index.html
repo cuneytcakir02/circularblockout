@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>Orbital Blocks</title>
+<style>
+  :root{
+    --bg1:#11113b; --bg2:#211a63; --panel:#27206e; --ink:#fff8dd;
+    --violet:#604dff; --violet2:#3726a3; --shadow:#090821;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:
+    radial-gradient(circle at 50% 20%,#302579 0%,#171547 42%,#0d0d2f 100%);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:white}
+  body{display:grid;place-items:center}
+  #app{
+    width:min(100vw,520px); height:min(100vh,930px); position:relative; overflow:hidden;
+    background:linear-gradient(180deg,#171747 0%,#171545 62%,#101033 100%);
+    box-shadow:0 0 70px #0008;
+    touch-action:none; user-select:none;
+  }
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .top{
+    position:absolute;top:18px;left:18px;right:18px;display:grid;
+    grid-template-columns:1fr auto 1fr;align-items:start;gap:10px;pointer-events:none
+  }
+  .pill,.sq{
+    pointer-events:auto;border:2px solid #44359d;background:linear-gradient(#26215e,#171746);
+    box-shadow:inset 0 2px 0 #ffffff18,0 7px 12px #0007;border-radius:16px;font-weight:900
+  }
+  .coins{justify-self:start;padding:8px 14px;color:#cfc5ff;font-size:20px;letter-spacing:.4px}
+  .coins:before{content:"★";display:inline-grid;place-items:center;width:25px;height:25px;
+    margin-right:8px;border-radius:50%;background:linear-gradient(#ffd94d,#f1a700);
+    color:#a96d00;border:2px solid #fff08a;box-shadow:0 2px 0 #9c5b00}
+  .timer{padding:8px 18px;font-size:28px;color:var(--ink)}
+  .level{justify-self:end;padding:8px 14px;color:#cfc5ff;font-size:20px}
+  .sideBtns{position:absolute;top:74px;left:18px;right:18px;display:flex;justify-content:space-between}
+  .sideBtns.level-only{justify-content:flex-end}
+  .level-menu-btn{font-size:25px}
+  .sq{width:58px;height:58px;display:grid;place-items:center;font-size:30px;
+    background:linear-gradient(#7768ff,#3927cb);border-color:#8f86ff;color:#fff;
+    text-shadow:0 2px 0 #2d1c80}
+  .sq:active{transform:translateY(2px)}
+  .bottom{
+    position:absolute;left:0;right:0;bottom:max(12px,env(safe-area-inset-bottom));
+    display:flex;justify-content:center;gap:20px;pointer-events:none
+  }
+  .power{pointer-events:auto;width:92px;height:92px;border:0;border-radius:26px;
+    background:linear-gradient(#72f54c,#39b52a);box-shadow:inset 0 3px 0 #d3ffbf,0 8px 0 #176818,0 12px 20px #0008;
+    color:white;font-size:36px;position:relative}
+  .power small{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);
+    min-width:62px;padding:3px 8px;border-radius:12px;background:#5e49df;border:2px solid #30228b;
+    color:#151347;font-weight:1000;font-size:18px}
+  .hint{
+    position:absolute;left:50%;bottom:122px;transform:translateX(-50%);
+    width:max-content;max-width:90%;padding:8px 14px;border-radius:14px;background:#090924aa;
+    color:#d9d5ff;font-weight:700;font-size:13px;pointer-events:none;transition:.25s
+  }
+  .modal{position:absolute;inset:0;display:none;place-items:center;background:#09091dbd;backdrop-filter:blur(5px)}
+  .modal.show{display:grid}
+  .card{width:82%;padding:28px;border-radius:28px;background:linear-gradient(#4032a5,#201863);
+    border:3px solid #7b6bff;box-shadow:0 24px 70px #000c;text-align:center}
+  .card h1{margin:0 0 10px;font-size:36px}.card p{color:#d7d1ff;font-weight:700}
+  .primary{border:0;border-radius:18px;padding:13px 24px;font-size:20px;font-weight:1000;
+    background:linear-gradient(#80f75c,#35bc2c);color:#14320f;box-shadow:0 6px 0 #18761c}
+  .level-card{max-height:76vh;overflow:auto}
+  .level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0 24px}
+  .level-choice{aspect-ratio:1;border:2px solid #8c7fff;border-radius:15px;
+    background:linear-gradient(#7768ff,#3927cb);color:#fff;font-size:20px;font-weight:1000;
+    box-shadow:inset 0 2px 0 #ffffff33,0 5px 0 #24167e}
+  .level-choice.current{background:linear-gradient(#ffd85b,#e99a13);border-color:#fff1a0;color:#5b3900;
+    box-shadow:inset 0 2px 0 #fff8c8,0 5px 0 #9e5a09}
+  .level-choice:active{transform:translateY(3px);box-shadow:0 2px 0 #24167e}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div class="top">
+    <div class="pill coins" id="coins">1745</div>
+    <div class="pill timer" id="timer">02:30</div>
+    <div class="pill level" id="level">Lv 1</div>
+  </div>
+
+  <div class="sideBtns level-only">
+    <button class="sq level-menu-btn" id="levelMenu" aria-label="Level seç">☰</button>
+  </div>
+
+  <div class="hint" id="hint">Büyük ve küçük blokları sürükle; kapı, kendisinden geniş bloğu kabul etmez.</div>
+
+  <div class="bottom">
+    <button class="power" id="shuffle">⟳<small>300</small></button>
+    <button class="power" id="rocket">🚀<small>3</small></button>
+    <button class="power" id="ufo">🛸<small>1200</small></button>
+  </div>
+
+  <div class="modal" id="levelPicker">
+    <div class="card level-card">
+      <h1>LEVEL SEÇ</h1>
+      <p>Oynamak istediğin level'a dokun.</p>
+      <div class="level-grid" id="levelGrid"></div>
+      <button class="primary" id="closeLevels">KAPAT</button>
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="card">
+      <h1 id="modalTitle">Duraklatıldı</h1>
+      <p id="modalText">Devam etmek için butona dokun.</p>
+      <button class="primary" id="modalBtn">DEVAM</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const app = document.getElementById('app');
+  const ui = {
+    coins: document.getElementById('coins'), timer: document.getElementById('timer'),
+    level: document.getElementById('level'), hint: document.getElementById('hint'),
+    modal: document.getElementById('modal'), modalTitle: document.getElementById('modalTitle'),
+    modalText: document.getElementById('modalText'), modalBtn: document.getElementById('modalBtn')
+  };
+
+  const COLORS = {
+    red:   {a:'#ff5c45', b:'#c92317', glow:'#ff826f'},
+    blue:  {a:'#45a3ff', b:'#175bd7', glow:'#7cc1ff'},
+    yellow:{a:'#ffd64d', b:'#e68b0a', glow:'#fff08a'},
+    green: {a:'#83e847', b:'#3d9f16', glow:'#b7ff7b'}
+  };
+  const colorOrder = ['red','blue','yellow','green'];
+
+  let dpr=1,W=0,H=0,cx=0,cy=0,outerR=0,innerR=0,ringW=0;
+  let level=1, coins=1745, timeLeft=150, paused=false, ended=false, lastTick=performance.now();
+  let rings=5,sectors=16,blocks=[],history=[],selected=null,drag=null,particles=[],exits=[],exitingBlocks=[];
+  let rocketCount=3;
+
+  function resize(){
+    const r=app.getBoundingClientRect(); dpr=Math.min(2,devicePixelRatio||1);
+    canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);
+    canvas.style.width=r.width+'px';canvas.style.height=r.height+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=r.width;H=r.height;cx=W/2;cy=H*0.49;outerR=Math.min(W*0.43,H*0.34);
+    innerR=outerR*0.19;
+    ringW=(outerR-innerR)/rings;
+    draw();
+  }
+
+  function gateFor(color){
+    // Sağ=0, alt=1/4, sol=1/2, üst=3/4; sektör sayısından bağımsız.
+    const ratio={blue:0,green:.25,yellow:.5,red:.75}[color];
+    return Math.floor(sectors*ratio)%sectors;
+  }
+
+  function shapeCells(b,r=b.r,s=b.s){
+    const cells=[];
+    const radialSize=b.radialSize||1;
+    const angularSize=b.angularSize||1;
+    for(let dr=0;dr<radialSize;dr++){
+      for(let ds=0;ds<angularSize;ds++){
+        cells.push([r+dr,(s+ds+sectors)%sectors]);
+      }
+    }
+    return cells;
+  }
+
+  function blockCenter(b){
+    const radialSize=b.radialSize||1;
+    const angularSize=b.angularSize||1;
+    const radius=innerR+ringW*(b.r+radialSize/2);
+    const a=((b.s+angularSize/2)/sectors)*Math.PI*2;
+    return {x:cx+Math.cos(a)*radius,y:cy+Math.sin(a)*radius,a,radius};
+  }
+
+  function makeLevel(n){
+    // Board dış ölçüsü sabit; ilk levellarda daha az halka olduğu için hücreler daha büyük.
+    // Zorluk arttıkça halka ve sektör sayısı kademeli olarak büyür.
+    if(n<=3){ rings=3; sectors=12; }
+    else if(n<=7){ rings=4; sectors=14; }
+    else if(n<=12){ rings=5; sectors=16; }
+    else if(n<=20){ rings=6; sectors=18; }
+    else { rings=7; sectors=20; }
+
+    // Level seçimi sırasında geometriyi yeni halka sayısına göre anında güncelle.
+    ringW=(outerR-innerR)/rings;
+    blocks=[]; history=[]; particles=[]; exitingBlocks=[]; selected=null;
+
+    const used=new Set();
+    const key=(r,s)=>r+','+((s%sectors)+sectors)%sectors;
+    const difficultyCount =
+      n<=3 ? 5+n :
+      n<=7 ? 8+n :
+      n<=12 ? 12+n :
+      16+n;
+    const count=Math.min(difficultyCount, Math.floor(rings*sectors*0.38));
+
+    function shapeForIndex(i){
+      // İlk level çoğunlukla tek hücre; sonraki levellarda daha büyük klonlar artar.
+      const pool=n<=2
+        ? [[1,1],[1,1],[1,1]]
+        : n<=5
+          ? [[1,1],[1,1],[2,1],[1,2]]
+          : n<=10
+            ? [[1,1],[2,1],[1,2],[2,2]]
+            : [[1,1],[2,1],[1,2],[2,2],[1,3]];
+      const pick=pool[(i+Math.floor(Math.random()*pool.length))%pool.length];
+      return {radialSize:pick[0],angularSize:pick[1]};
+    }
+
+    function canOccupy(r,s,radialSize,angularSize){
+      if(r<0 || r+radialSize>rings)return false;
+      for(let dr=0;dr<radialSize;dr++){
+        for(let ds=0;ds<angularSize;ds++){
+          if(used.has(key(r+dr,s+ds)))return false;
+        }
+      }
+      return true;
+    }
+
+    for(let i=0;i<count;i++){
+      const shape=shapeForIndex(i);
+      let r=0,s=0,tries=0;
+      do{
+        r=Math.floor(Math.random()*Math.max(1,rings-shape.radialSize+1));
+        s=Math.floor(Math.random()*sectors);
+        tries++;
+      }while(!canOccupy(r,s,shape.radialSize,shape.angularSize) && tries<180);
+
+      if(!canOccupy(r,s,shape.radialSize,shape.angularSize))continue;
+
+      const color=colorOrder[i%4];
+      const b={
+        id:crypto.randomUUID?.()||String(Math.random()),
+        r,s,color,radialSize:shape.radialSize,angularSize:shape.angularSize,
+        scale:1,alpha:1
+      };
+      shapeCells(b).forEach(([cr,cs])=>used.add(key(cr,cs)));
+      blocks.push(b);
+    }
+
+    // Her renkten en az bir kolay blok kapıya yakın dursun.
+    colorOrder.forEach((color,i)=>{
+      const candidate=blocks.find(b=>b.color===color && b.angularSize===1 && b.radialSize===1);
+      if(!candidate)return;
+      shapeCells(candidate).forEach(([r,s])=>used.delete(key(r,s)));
+      const targetS=gateFor(color);
+      const targetR=rings-2;
+      if(canOccupy(targetR,targetS,1,1)){
+        candidate.r=targetR;candidate.s=targetS;
+        used.add(key(targetR,targetS));
+      }else{
+        shapeCells(candidate).forEach(([r,s])=>used.add(key(r,s)));
+      }
+    });
+
+    setupExits();
+    timeLeft=Math.max(75,150-(n-1)*5); ended=false; paused=false;
+    updateUI(); hideModal();
+  }
+
+  function setupExits(){
+    exits=colorOrder.map(color=>{
+      const largest=Math.max(1,...blocks.filter(b=>b.color===color).map(b=>b.angularSize||1));
+      const maxCapacity=sectors<=12 ? 2 : 3;
+      return {color,sector:gateFor(color),capacity:Math.min(maxCapacity,largest)};
+    });
+  }
+
+  function gateCells(g){
+    const start=(g.sector-Math.floor((g.capacity-1)/2)+sectors)%sectors;
+    return Array.from({length:g.capacity},(_,i)=>(start+i)%sectors);
+  }
+
+  function gateForBlock(b){
+    return exits.find(g=>g.color===b.color);
+  }
+
+  function blockFitsGate(b,g=gateForBlock(b)){
+    if(!g || (b.angularSize||1)>g.capacity)return false;
+    const allowed=new Set(gateCells(g));
+    for(let ds=0;ds<(b.angularSize||1);ds++){
+      if(!allowed.has((b.s+ds)%sectors))return false;
+    }
+    return true;
+  }
+
+  function occupancy(ignoreId=null){
+    const m=new Map();
+    blocks.forEach(b=>{
+      if(b.id===ignoreId || b.alpha<=0.05)return;
+      shapeCells(b).forEach(([r,s])=>m.set(r+','+s,b));
+    });
+    return m;
+  }
+
+  function saveState(){
+    history.push(blocks.map(b=>({...b})));
+    if(history.length>30)history.shift();
+  }
+
+  function moveBlock(b,dr,ds){
+    if(paused||ended)return false;
+    const nr=b.r+dr;
+    const ns=(b.s+ds+sectors)%sectors;
+    const radialSize=b.radialSize||1;
+    const occ=occupancy(b.id);
+
+    if(nr<0 || nr+radialSize>rings)return false;
+
+    const destination=shapeCells(b,nr,ns);
+    if(destination.some(([r,s])=>occ.has(r+','+s)))return false;
+
+    saveState();
+    b.r=nr;
+    b.s=ns;
+    selected=b.id;
+
+    // Dış kenarı kapıya ulaştığında, kapı genişliği yeterliyse otomatik girer.
+    if(b.r+radialSize===rings && blockFitsGate(b)){
+      exitBlock(b);
+    }else if(b.r+radialSize===rings && (b.angularSize||1)>gateForBlock(b).capacity){
+      pulseHint('Bu blok bu kapıdan daha geniş.');
+    }
+    return true;
+  }
+
+  function sectorDist(a,b){
+    let d=Math.abs(a-b)%sectors; return Math.min(d,sectors-d);
+  }
+
+  function exitBlock(b){
+    // Oynanabilir grid'den hemen çıkar; görsel kopyası kapıya doğru akarak yok olur.
+    blocks=blocks.filter(x=>x.id!==b.id);
+    selected=null;
+    exitingBlocks.push({
+      id:b.id, r:b.r, s:b.s, color:b.color,
+      radialSize:b.radialSize||1, angularSize:b.angularSize||1,
+      progress:0, duration:430, particleClock:0
+    });
+    coins+=25;
+    updateUI();
+  }
+
+  function finishExitAnimation(anim){
+    const gateAngle=(anim.s+anim.angularSize/2)/sectors*Math.PI*2;
+    const gx=cx+Math.cos(gateAngle)*(outerR+18);
+    const gy=cy+Math.sin(gateAngle)*(outerR+18);
+
+    // Kapının ağzında kısa ve yoğun son parçalanma patlaması.
+    for(let i=0;i<22;i++){
+      const spread=(Math.random()-.5)*1.8;
+      const speed=1.2+Math.random()*3.2;
+      particles.push({
+        x:gx+Math.cos(gateAngle+Math.PI/2)*spread*7,
+        y:gy+Math.sin(gateAngle+Math.PI/2)*spread*7,
+        vx:Math.cos(gateAngle)*speed+Math.cos(gateAngle+Math.PI/2)*spread,
+        vy:Math.sin(gateAngle)*speed+Math.sin(gateAngle+Math.PI/2)*spread,
+        life:.75+Math.random()*.35,
+        size:2+Math.random()*3.5,
+        color:COLORS[anim.color].a
+      });
+    }
+
+    if(!blocks.length && exitingBlocks.every(x=>x===anim || x.progress>=1)){
+      setTimeout(()=>{ if(!blocks.length && !exitingBlocks.length && !ended) winLevel(); },180);
+    }
+  }
+
+  function cellCenter(r,s){
+    const radius=innerR+ringW*(r+.5);
+    // Hücrenin sınırını değil, gerçek geometrik merkezini kullan.
+    const a=((s+.5)/sectors)*Math.PI*2;
+    return {x:cx+Math.cos(a)*radius,y:cy+Math.sin(a)*radius,a,radius};
+  }
+
+  function polarFromPoint(x,y){
+    const dx=x-cx,dy=y-cy; let a=Math.atan2(dy,dx); if(a<0)a+=Math.PI*2;
+    const radius=Math.hypot(dx,dy);
+    const r=Math.floor((radius-innerR)/ringW);
+    // Görsel dilim s ile s+1 arasındadır; bu yüzden round değil floor kullanılır.
+    const s=Math.floor(a/(Math.PI*2)*sectors)%sectors;
+    return {r,s,a,radius};
+  }
+
+  function findBlockAt(x,y){
+    const p=polarFromPoint(x,y);
+    if(p.r<0 || p.r>=rings)return null;
+
+    const occ=occupancy();
+    let hit=occ.get(p.r+','+p.s);
+    if(hit)return hit;
+
+    // Parmak için hücre sınırlarında küçük tolerans.
+    const radialPos=(p.radius-innerR)/ringW;
+    const angularPos=p.a/(Math.PI*2)*sectors;
+    const rf=radialPos-Math.floor(radialPos);
+    const af=angularPos-Math.floor(angularPos);
+    const candidates=[];
+    if(rf<.16)candidates.push([p.r-1,p.s]);
+    if(rf>.84)candidates.push([p.r+1,p.s]);
+    if(af<.16)candidates.push([p.r,(p.s-1+sectors)%sectors]);
+    if(af>.84)candidates.push([p.r,(p.s+1)%sectors]);
+
+    for(const [r,s] of candidates){
+      hit=occ.get(r+','+s);
+      if(hit)return hit;
+    }
+    return null;
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();ctx.roundRect(x,y,w,h,r);
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    drawBackground();
+    drawBoard();
+    drawParticles();
+  }
+
+  function drawBackground(){
+    const g=ctx.createRadialGradient(cx,cy-outerR*.7,0,cx,cy,Math.max(W,H));
+    g.addColorStop(0,'#2e2673');g.addColorStop(.45,'#171545');g.addColorStop(1,'#0b0b29');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  }
+
+  function drawBoard(){
+    ctx.save();
+    ctx.shadowColor='#000a';ctx.shadowBlur=28;ctx.shadowOffsetY=18;
+    ctx.beginPath();ctx.arc(cx,cy,outerR+25,0,Math.PI*2);ctx.fillStyle='#2d2484';ctx.fill();
+    ctx.restore();
+
+    const rim=ctx.createLinearGradient(cx-outerR,cy-outerR,cx+outerR,cy+outerR);
+    rim.addColorStop(0,'#7466ff');rim.addColorStop(.5,'#4130ad');rim.addColorStop(1,'#281c7d');
+    ctx.beginPath();ctx.arc(cx,cy,outerR+24,0,Math.PI*2);ctx.arc(cx,cy,outerR+7,0,Math.PI*2,true);
+    ctx.fillStyle=rim;ctx.fill('evenodd');
+
+    ctx.beginPath();ctx.arc(cx,cy,outerR+3,0,Math.PI*2);
+    ctx.fillStyle='#171544';ctx.fill();
+
+    drawPolarGrid();
+
+    // Hiçbir normal blok board çerçevesinin dışına taşamaz.
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx,cy,outerR+1,0,Math.PI*2);
+    ctx.clip();
+    blocks.forEach(drawBlock);
+    if(selected){
+      const b=blocks.find(x=>x.id===selected); if(b)drawSelection(b);
+    }
+    ctx.restore();
+
+    // Çıkış animasyonları da board maskesiyle kapıya doğru kayar.
+    exitingBlocks.forEach(drawExitingBlock);
+
+    // Kapılar en üst katmanda çizilir.
+    exits.forEach(drawGate);
+  }
+
+  function drawPolarGrid(){
+    // rings
+    for(let r=0;r<=rings;r++){
+      const rr=innerR+r*ringW;
+      ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);
+      ctx.strokeStyle=r===rings?'#6355db':'#332a7d';ctx.lineWidth=r===rings?2:1.4;ctx.stroke();
+    }
+    // radial edges, bent cells are naturally formed by polar sectors
+    for(let s=0;s<sectors;s++){
+      const a=s/sectors*Math.PI*2;
+      ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*innerR,cy+Math.sin(a)*innerR);
+      ctx.lineTo(cx+Math.cos(a)*outerR,cy+Math.sin(a)*outerR);
+      ctx.strokeStyle='#2a246a';ctx.lineWidth=1.2;ctx.stroke();
+    }
+  }
+
+  function drawGate(g){
+    const cells=gateCells(g);
+    const start=cells[0];
+    const a=((start+g.capacity/2)/sectors)*Math.PI*2;
+    const span=Math.PI*2/sectors*(g.capacity-.05);
+    const r1=outerR+7,r2=outerR+32;
+    ctx.save();ctx.translate(cx,cy);
+    ctx.beginPath();ctx.arc(0,0,r2,a-span/2,a+span/2);
+    ctx.arc(0,0,r1,a+span/2,a-span/2,true);ctx.closePath();
+    const col=COLORS[g.color];
+    const grad=ctx.createLinearGradient(Math.cos(a)*r1,Math.sin(a)*r1,Math.cos(a)*r2,Math.sin(a)*r2);
+    grad.addColorStop(0,col.b);grad.addColorStop(1,col.a);
+    ctx.fillStyle=grad;ctx.shadowColor='#0008';ctx.shadowBlur=10;ctx.shadowOffsetY=5;ctx.fill();
+    ctx.shadowBlur=0;ctx.strokeStyle=col.glow;ctx.lineWidth=2;ctx.stroke();
+    const ar=(r1+r2)/2;
+    ctx.translate(Math.cos(a)*ar,Math.sin(a)*ar);ctx.rotate(a);
+    ctx.beginPath();ctx.moveTo(10,0);ctx.lineTo(-7,-7);ctx.lineTo(-7,7);ctx.closePath();
+    ctx.fillStyle='#fffbe9';ctx.shadowColor='#0008';ctx.shadowBlur=3;ctx.fill();
+    ctx.restore();
+  }
+
+  function wedgePath(r,s,radialSize=1,angularSize=1,pad=.08){
+    const a0=(s/sectors)*Math.PI*2 + pad/sectors*Math.PI*2;
+    const a1=((s+angularSize)/sectors)*Math.PI*2 - pad/sectors*Math.PI*2;
+    const ri=innerR+r*ringW+4;
+    const ro=innerR+(r+radialSize)*ringW-4;
+    ctx.beginPath();ctx.arc(cx,cy,ro,a0,a1);ctx.arc(cx,cy,ri,a1,a0,true);ctx.closePath();
+  }
+
+  function drawBlock(b){
+    const radialSize=b.radialSize||1, angularSize=b.angularSize||1;
+    wedgePath(b.r,b.s,radialSize,angularSize);
+    const col=COLORS[b.color];
+    const p=blockCenter(b);
+    const grad=ctx.createRadialGradient(p.x-ringW*.18,p.y-ringW*.22,2,p.x,p.y,ringW*Math.max(radialSize,angularSize)*.8);
+    grad.addColorStop(0,col.glow);grad.addColorStop(.42,col.a);grad.addColorStop(1,col.b);
+    ctx.save();ctx.globalAlpha=b.alpha;ctx.shadowColor='#000a';ctx.shadowBlur=8;ctx.shadowOffsetY=5;
+    ctx.fillStyle=grad;ctx.fill();ctx.shadowBlur=0;
+    ctx.strokeStyle='#ffffff55';ctx.lineWidth=1.6;ctx.stroke();
+    // glossy highlight
+    const a=(b.s+angularSize/2)/sectors*Math.PI*2, rr=innerR+(b.r+radialSize*.72)*ringW;
+    ctx.beginPath();ctx.arc(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr,Math.max(2,ringW*.06),0,Math.PI*2);
+    ctx.fillStyle='#ffffffb8';ctx.fill();
+    ctx.restore();
+  }
+
+  function drawExitingBlock(anim){
+    const eased=1-Math.pow(1-anim.progress,2.15);
+    const a=(anim.s+anim.angularSize/2)/sectors*Math.PI*2;
+    const travel=ringW*1.55*eased;
+    const dx=Math.cos(a)*travel;
+    const dy=Math.sin(a)*travel;
+
+    ctx.save();
+
+    // Board sınırı maske görevi görür: kapının içine geçen bölüm anında görünmez.
+    ctx.beginPath();
+    ctx.arc(cx,cy,outerR+7,0,Math.PI*2);
+    ctx.clip();
+
+    ctx.translate(dx,dy);
+    ctx.globalAlpha=1-Math.max(0,(anim.progress-.72)/.28)*.85;
+
+    const fake={r:anim.r,s:anim.s,color:anim.color,radialSize:anim.radialSize,angularSize:anim.angularSize,alpha:1};
+    drawBlock(fake);
+    ctx.restore();
+  }
+
+  function drawSelection(b){
+    wedgePath(b.r,b.s,b.radialSize||1,b.angularSize||1,.03);
+    ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.shadowColor='#fff';ctx.shadowBlur=12;ctx.stroke();ctx.restore();
+  }
+
+  function drawParticles(){
+    particles.forEach(p=>{
+      ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size||3,0,Math.PI*2);ctx.fill();
+    });ctx.globalAlpha=1;
+  }
+
+  function update(dt){
+    if(!paused&&!ended){
+      timeLeft-=dt/1000;
+      if(timeLeft<=0){timeLeft=0;gameOver()}
+    }
+    exitingBlocks.forEach(anim=>{
+      anim.progress+=dt/anim.duration;
+      anim.particleClock+=dt;
+
+      // Blok kapıya girerken aynı renkte küçük parçalar sürekli kopar.
+      while(anim.particleClock>26 && anim.progress<.96){
+        anim.particleClock-=26;
+        const a=(anim.s+anim.angularSize/2)/sectors*Math.PI*2;
+        const eased=1-Math.pow(1-Math.min(1,anim.progress),2.15);
+        const rr=innerR+(anim.r+anim.radialSize/2)*ringW+ringW*1.55*eased;
+        const tangent=a+Math.PI/2;
+        particles.push({
+          x:cx+Math.cos(a)*rr+Math.cos(tangent)*(Math.random()-.5)*ringW*.45,
+          y:cy+Math.sin(a)*rr+Math.sin(tangent)*(Math.random()-.5)*ringW*.45,
+          vx:Math.cos(a)*(1+Math.random()*2)+Math.cos(tangent)*(Math.random()-.5)*2,
+          vy:Math.sin(a)*(1+Math.random()*2)+Math.sin(tangent)*(Math.random()-.5)*2,
+          life:.55+Math.random()*.35,
+          size:1.8+Math.random()*2.8,
+          color:COLORS[anim.color].a
+        });
+      }
+    });
+
+    const completed=exitingBlocks.filter(anim=>anim.progress>=1);
+    completed.forEach(finishExitAnimation);
+    exitingBlocks=exitingBlocks.filter(anim=>anim.progress<1);
+
+    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.97;p.vy*=.97;p.life-=dt/700});
+    particles=particles.filter(p=>p.life>0);
+    updateUI();
+  }
+
+  function updateUI(){
+    ui.coins.textContent=coins;
+    ui.level.textContent='Lv '+level;
+    const m=Math.floor(timeLeft/60),s=Math.floor(timeLeft%60);
+    ui.timer.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    document.querySelector('#rocket small').textContent=rocketCount;
+  }
+
+  function tick(t){
+    const dt=Math.min(40,t-lastTick);lastTick=t;update(dt);draw();requestAnimationFrame(tick);
+  }
+
+  function pulseHint(text){
+    ui.hint.textContent=text;ui.hint.style.opacity='1';
+    clearTimeout(pulseHint.t);pulseHint.t=setTimeout(()=>ui.hint.style.opacity='.15',1800);
+  }
+
+  function winLevel(){
+    ended=true;coins+=200+level*20;updateUI();
+    showModal('HARİKA!','Tüm blokları çıkardın. Sonraki seviye biraz daha zor.','SONRAKİ SEVİYE',()=>{
+      level++;makeLevel(level);resize()
+    });
+  }
+  function gameOver(){
+    ended=true;showModal('SÜRE BİTTİ','Aynı seviyeyi yeniden dene.','TEKRAR DENE',()=>{makeLevel(level);resize();});
+  }
+  function showModal(title,text,btn,action){
+    ui.modalTitle.textContent=title;ui.modalText.textContent=text;ui.modalBtn.textContent=btn;
+    ui.modal.classList.add('show');ui.modalBtn.onclick=action;
+  }
+  function hideModal(){ui.modal.classList.remove('show')}
+
+  function pointerDown(e){
+    if(paused||ended)return;
+    const p=getPointer(e),b=findBlockAt(p.x,p.y);
+    if(!b){selected=null;return}
+    selected=b.id; const pol=polarFromPoint(p.x,p.y);
+    drag={id:b.id,startX:p.x,startY:p.y,lastR:pol.r,lastS:pol.s,moved:false};
+    try{canvas.setPointerCapture(e.pointerId)}catch{}
+  }
+  function pointerMove(e){
+    if(!drag||paused||ended)return;
+    const p=getPointer(e), pol=polarFromPoint(p.x,p.y);
+    const b=blocks.find(x=>x.id===drag.id);if(!b)return;
+    const dx=p.x-drag.startX,dy=p.y-drag.startY;
+    if(Math.hypot(dx,dy)>8)drag.moved=true;
+    // One cell at a time, choosing radial or circular move based on dominant polar delta.
+    const targetR=Math.floor((pol.radius-innerR)/ringW-(b.radialSize||1)/2+0.5);
+    let rawS=Math.floor(pol.a/(Math.PI*2)*sectors-(b.angularSize||1)/2+0.5); rawS=(rawS%sectors+sectors)%sectors;
+    let ds=rawS-b.s; if(ds>sectors/2)ds-=sectors;if(ds<-sectors/2)ds+=sectors;
+    const dr=targetR-b.r;
+    if(Math.abs(dr)>=1 || Math.abs(ds)>=1){
+      if(Math.abs(dr*ringW) > Math.abs(ds*(Math.PI*2*(innerR+(b.r+.5)*ringW)/sectors))){
+        moveBlock(b,Math.sign(dr),0);
+      }else{
+        moveBlock(b,0,Math.sign(ds));
+      }
+      drag.startX=p.x;drag.startY=p.y;
+    }
+  }
+  function pointerUp(e){
+    if(!drag)return;
+    const b=blocks.find(x=>x.id===drag.id);
+    if(b&&!drag.moved){
+      // tap on an outer aligned block exits it
+      pulseHint('Sürükle: teğetsel hareket döndürür, radyal hareket içeri/dışarı taşır.');
+    }
+    drag=null;
+  }
+  function getPointer(e){
+    const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};
+  }
+
+  canvas.addEventListener('pointerdown',pointerDown);
+  canvas.addEventListener('pointermove',pointerMove);
+  canvas.addEventListener('pointerup',pointerUp);
+  canvas.addEventListener('pointercancel',pointerUp);
+
+  window.addEventListener('keydown',e=>{
+    const b=blocks.find(x=>x.id===selected); if(!b)return;
+    if(e.key==='ArrowLeft')moveBlock(b,0,-1);
+    if(e.key==='ArrowRight')moveBlock(b,0,1);
+    if(e.key==='ArrowUp')moveBlock(b,-1,0);
+    if(e.key==='ArrowDown')moveBlock(b,1,0);
+  });
+
+  const levelPicker=document.getElementById('levelPicker');
+  const levelGrid=document.getElementById('levelGrid');
+
+  function renderLevelPicker(){
+    levelGrid.innerHTML='';
+    // Prototipte 40 level doğrudan seçilebilir.
+    for(let n=1;n<=40;n++){
+      const btn=document.createElement('button');
+      btn.className='level-choice'+(n===level?' current':'');
+      btn.textContent=n;
+      btn.onclick=()=>{
+        level=n;
+        levelPicker.classList.remove('show');
+        makeLevel(level);
+        resize();
+        pulseHint('Level '+level+' başladı.');
+      };
+      levelGrid.appendChild(btn);
+    }
+  }
+
+  document.getElementById('levelMenu').onclick=()=>{
+    if(ended)return;
+    paused=true;
+    renderLevelPicker();
+    levelPicker.classList.add('show');
+  };
+
+  document.getElementById('closeLevels').onclick=()=>{
+    levelPicker.classList.remove('show');
+    paused=false;
+  };
+
+  levelPicker.addEventListener('click',e=>{
+    if(e.target===levelPicker){
+      levelPicker.classList.remove('show');
+      paused=false;
+    }
+  });
+  document.getElementById('shuffle').onclick=()=>{
+    if(coins<300)return pulseHint('Yeterli coin yok.');
+    coins-=300;saveState();
+    const spots=[];for(let r=0;r<rings;r++)for(let s=0;s<sectors;s++)spots.push([r,s]);
+    spots.sort(()=>Math.random()-.5);blocks.forEach((b,i)=>{b.r=spots[i][0];b.s=spots[i][1]});
+    updateUI();pulseHint('Bloklar karıştırıldı.');
+  };
+  document.getElementById('rocket').onclick=()=>{
+    if(rocketCount<=0)return pulseHint('Roket kalmadı.');
+    rocketCount--;timeLeft+=25;updateUI();pulseHint('+25 saniye!');
+  };
+  document.getElementById('ufo').onclick=()=>{
+    if(coins<1200)return pulseHint('Yeterli coin yok.');
+    coins-=1200;saveState();
+    const b=blocks[Math.floor(Math.random()*blocks.length)];
+    if(b)exitBlock(b);updateUI();pulseHint('UFO bir bloğu kaldırdı.');
+  };
+
+  window.addEventListener('resize',resize);
+  makeLevel(1);resize();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
